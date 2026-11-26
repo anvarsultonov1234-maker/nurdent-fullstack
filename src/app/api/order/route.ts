@@ -3,6 +3,8 @@ import { supabaseAdmin, isServerSupabaseConfigured } from '@/lib/supabase/server
 import { sendTelegramOrderNotification } from '@/lib/telegram';
 import { OrderItem } from '@/types';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
