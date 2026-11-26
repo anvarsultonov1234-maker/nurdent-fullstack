@@ -3,20 +3,10 @@
 -- Bu skriptni Supabase SQL Editor (supabase.com -> SQL Editor -> Run) da 1 marta ishga tushiring!
 -- ==============================================================================
 
--- 1. ORDERS jadvali (agar yo'q bo'lsa yaratish, bor bo'lsa ustunlarni to'ldirish)
-CREATE TABLE IF NOT EXISTS public.orders (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    customer_name TEXT NOT NULL,
-    customer_phone TEXT NOT NULL,
-    telegram_username TEXT,
-    items JSONB NOT NULL DEFAULT '[]'::jsonb,
-    total_price NUMERIC NOT NULL DEFAULT 0,
-    status TEXT NOT NULL DEFAULT 'Yangi',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- 1. PRODUCTS jadvalini toza holda TEXT ID bilan yaratish (UUID xatosini bartaraf etish)
+DROP TABLE IF EXISTS public.products CASCADE;
 
--- 2. PRODUCTS jadvali
-CREATE TABLE IF NOT EXISTS public.products (
+CREATE TABLE public.products (
     id TEXT PRIMARY KEY,
     category TEXT NOT NULL DEFAULT 'equipment',
     name_uz TEXT NOT NULL,
@@ -33,20 +23,25 @@ CREATE TABLE IF NOT EXISTS public.products (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Mavjud jadvalda yetishmayotgan ustunlarni qo'shish (xavfsiz ALTER)
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'equipment';
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS name_uz TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS name_ru TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS desc_uz TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS desc_ru TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_display_uz TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_display_ru TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'in_stock';
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS badge_uz TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS badge_ru TEXT;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
-ALTER TABLE public.products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+-- 2. ORDERS jadvali (agar mavjud bo'lmasa yaratish, mavjud bo'lsa ustunlarini to'ldirish)
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT NOT NULL,
+    telegram_username TEXT,
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    total_price NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Yangi',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_name TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_phone TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS telegram_username TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total_price NUMERIC DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Yangi';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
 
 -- 3. HUQUQLARNI BERISH (anon, authenticated, service_role)
 GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
