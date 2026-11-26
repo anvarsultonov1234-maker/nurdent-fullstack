@@ -1,0 +1,155 @@
+-- ==============================================================================
+-- NurDent - Supabase Baza Jadvali, Huquqlar (RLS) va 33 ta Mahsulotni Ko'chirish
+-- Bu skriptni Supabase SQL Editor (supabase.com -> SQL Editor -> Run) da 1 marta ishga tushiring!
+-- ==============================================================================
+
+-- 1. ORDERS jadvali (agar yo'q bo'lsa yaratish, bor bo'lsa ustunlarni to'ldirish)
+CREATE TABLE IF NOT EXISTS public.orders (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    customer_name TEXT NOT NULL,
+    customer_phone TEXT NOT NULL,
+    telegram_username TEXT,
+    items JSONB NOT NULL DEFAULT '[]'::jsonb,
+    total_price NUMERIC NOT NULL DEFAULT 0,
+    status TEXT NOT NULL DEFAULT 'Yangi',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- 2. PRODUCTS jadvali
+CREATE TABLE IF NOT EXISTS public.products (
+    id TEXT PRIMARY KEY,
+    category TEXT NOT NULL DEFAULT 'equipment',
+    name_uz TEXT NOT NULL,
+    name_ru TEXT,
+    desc_uz TEXT,
+    desc_ru TEXT,
+    price NUMERIC NOT NULL DEFAULT 0,
+    price_display_uz TEXT,
+    price_display_ru TEXT,
+    status TEXT NOT NULL DEFAULT 'in_stock',
+    badge_uz TEXT,
+    badge_ru TEXT,
+    images JSONB NOT NULL DEFAULT '[]'::jsonb,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- Mavjud jadvalda yetishmayotgan ustunlarni qo'shish (xavfsiz ALTER)
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS category TEXT DEFAULT 'equipment';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS name_uz TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS name_ru TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS desc_uz TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS desc_ru TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price NUMERIC DEFAULT 0;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_display_uz TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS price_display_ru TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'in_stock';
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS badge_uz TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS badge_ru TEXT;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now());
+
+-- 3. HUQUQLARNI BERISH (anon, authenticated, service_role)
+GRANT USAGE ON SCHEMA public TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.products TO anon, authenticated, service_role;
+GRANT ALL ON TABLE public.orders TO anon, authenticated, service_role;
+
+-- 4. RLS (Row Level Security) Siyosatlari
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+
+-- Products siyosatlari
+DROP POLICY IF EXISTS "Public can view products" ON public.products;
+CREATE POLICY "Public can view products"
+    ON public.products FOR SELECT
+    TO anon, authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "Admins can manage products" ON public.products;
+CREATE POLICY "Admins can manage products"
+    ON public.products FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- Orders siyosatlari
+DROP POLICY IF EXISTS "Public can insert orders" ON public.orders;
+CREATE POLICY "Public can insert orders"
+    ON public.orders FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Admins can manage orders" ON public.orders;
+CREATE POLICY "Admins can manage orders"
+    ON public.orders FOR ALL
+    TO anon, authenticated
+    USING (true)
+    WITH CHECK (true);
+
+-- 5. STORAGE: product-images bucket
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('product-images', 'product-images', true)
+ON CONFLICT (id) DO UPDATE SET public = true;
+
+DROP POLICY IF EXISTS "Public view product images" ON storage.objects;
+CREATE POLICY "Public view product images"
+    ON storage.objects FOR SELECT
+    USING (bucket_id = 'product-images');
+
+DROP POLICY IF EXISTS "Upload product images" ON storage.objects;
+CREATE POLICY "Upload product images"
+    ON storage.objects FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (bucket_id = 'product-images');
+
+-- 6. BARCHA 33 TA MAHSULOTNI BAZAGA KO'CHIRISH (UPSERT)
+INSERT INTO public.products (
+  id, category, name_uz, name_ru, desc_uz, desc_ru,
+  price, price_display_uz, price_display_ru, status,
+  badge_uz, badge_ru, images
+) VALUES
+  ('431', 'sets', 'Stomatologik asboblar to‘plami (8 ta asbob + 1 lotok)', 'Набор стоматологических инструментов (8 инструментов + 1 лоток)', 'Yuqori sifatli zanglamas tibbiy po‘latdan ishlangan professional asboblar to‘plami va qulay metall lotok. 134°C gacha avtoklavda sterilizatsiya qilinadi.', 'Профессиональный набор инструментов из высококачественной медицинской нержавеющей стали и удобный металлический лоток. Автоклавируется до 134°C.', 270000, '270 000 so''m', '270 000 сум', 'in_stock', 'Xit to‘plam', 'Хит набор', '["/assets/images/item_431_1.jpg"]'::jsonb),
+  ('429', 'surgery', 'Stomatologik shiptsilar to‘plami (10 talik komplekt)', 'Набор стоматологических хирургических щипцов (10 шт)', 'Tish sug‘urish va jarrohlik amaliyotlari uchun to‘liq 10 talik shiptsilar to‘plami. Ergonomik tutqich va mustahkam tutish yuzasi.', 'Полный комплект хирургических щипцов для удаления зубов из 10 предметов. Эргономичные ручки и надёжный захват.', 2200000, '2 200 000 so''m', '2 200 000 сум', 'in_stock', 'Komplekt', 'Комплект', '["/assets/images/item_429_1.jpg"]'::jsonb),
+  ('423', 'surgery', 'Universal ortopedik va implantologik kalitlar to‘plami', 'Универсальный набор ортопедических ключей', 'Implantologiya va ortopediya uchun universal kalitlar komplekti. Har xil tizimlar bilan ishlash uchun qulay va bardoshli.', 'Универсальный набор ключей для ортопедии и имплантологии. Подходит для различных систем, высокая прочность.', 960000, '960 000 so''m', '960 000 сум', 'in_stock', 'Tavsiya etiladi', 'Рекомендуем', '["/assets/images/item_423_1.jpg"]'::jsonb),
+  ('427', 'surgery', 'Jarrohlik osteotomi', 'Хирургический остеотом', 'Implantat o‘rnatish va suyak to‘qimasini kengaytirish uchun mo‘ljallangan yuqori aniqlikdagi jarrohlik osteotomi.', 'Высокоточный хирургический остеотом для расщепления костного гребня и установки имплантов.', 1000000, '1 000 000 so''m', '1 000 000 сум', 'in_stock', 'Premium', 'Премиум', '["/assets/images/item_427_1.jpg"]'::jsonb),
+  ('425', 'equipment', 'Stomatologik Peskostruy (Qum purkagich)', 'Стоматологический пескоструйный аппарат', 'Metall va keramika yuzalarni mikro-tozalash hamda yopishqoqlikni oshirish uchun ixcham va kuchli peskostruy apparati.', 'Компактный и мощный пескоструйный аппарат для микроабразивной обработки металла, керамики и композитов.', 780000, '780 000 so''m', '780 000 сум', 'in_stock', 'Mashhur', 'Популярный', '["/assets/images/item_425_1.jpg"]'::jsonb),
+  ('424', 'equipment', 'Simsiz Polimerizatsiya lampasi', 'Беспроводная фотополимеризационная лампа', 'Kuchli yorug‘lik oqimi va tezkor qotirish rejimlari bilan jihozlangan stomatologik polimerizatsiya lampasi (buyurtmaga).', 'Мощная фотополимеризационная лампа с несколькими режимами отверждения композитных материалов (на заказ).', 750000, '750 000 so''m', '750 000 сум', 'in_stock', 'Buyurtmaga', 'На заказ', '["/assets/images/item_424_1.jpg"]'::jsonb),
+  ('378', 'equipment', 'NICEDEN Simsiz Endodontik Obturator', 'Беспроводной обтуратор NICEDEN', 'Ildiz kanallarini gutta-percha bilan to‘ldirish uchun zamonaviy qurilma. Vertikal zichlash, atigi 3 soniyada tez qiziydi.', 'Современный инструмент для эндодонтического лечения. Вертикальная компакция гуттаперчи, нагрев за 3 секунды, эргономичный корпус.', 610000, '610 000 so''m', '610 000 сум', 'in_stock', 'Yangi', 'Новинка', '["/assets/images/item_378_1.jpg","/assets/images/item_378_2.jpg"]'::jsonb),
+  ('426', 'therapy', 'Endodontik Plagger', 'Эндодонтический плаггер', 'Gutta-perchani zichlash va kanal bo‘ylab aniq taqsimlash uchun professional ikki tomonlama plagger.', 'Профессиональный двухсторонний плаггер для точной конденсации и уплотнения гуттаперчи в каналах.', 610000, '610 000 so''m', '610 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_426_1.jpg"]'::jsonb),
+  ('376', 'sets', 'Stomatologik fotokontraster to‘plami (6 ta shakl)', 'Набор стоматологических контрастеров (6 форм)', 'Mukammal intraoral fotosuratlar olish uchun toza qora fon yaratuvchi 6 xil shakldagi mustahkam metall kontraster to‘plami.', 'Набор из 6 форм металлических контрастеров с матовым покрытием для идеальной интраоральной дентальной фотосъемки.', 400000, '400 000 so''m', '400 000 сум', 'in_stock', 'Foto to''plam', 'Фотонабор', '["/assets/images/item_376_1.jpg"]'::jsonb),
+  ('377', 'therapy', 'Stomatologik fotokontraster C-4B (o‘lchov chizig‘i bilan)', 'Стоматологический фотоконтрастер C-4B', 'Ichki og‘iz suratga olish uchun o‘lchov chizig‘iga ega professional fotokontraster. 134°C gacha avtoklavda sterilizatsiya qilinadi.', 'Профессиональный инструмент со встроенной линейкой для измерений. Матовое антибликовое покрытие, автоклавируемый.', 80000, '80 000 so''m', '80 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_377_1.jpg"]'::jsonb),
+  ('422', 'surgery', 'Avtomatik Koronko-yechuvchi (Koronkosnimatel)', 'Коронкосниматель автоматический', 'Sun’iy qoplamalar (koronkalar) va ko‘priksimon protezlarni xavfsiz va tez yechish uchun mo‘ljallangan mexanizm.', 'Надёжный инструмент для снятия коронок и мостовидных протезов без повреждения опорных зубов.', 300000, '300 000 so''m', '30 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_422_1.jpg"]'::jsonb),
+  ('417', 'surgery', 'Lindeman Jarrohlik Frezasi (1721 / 2326)', 'Хирургическая фреза Линдемана (1721 / 2326)', 'Suyak to‘qimasini kesish va shakllantirish uchun maxsus volfram-karbid Lindeman frezasi. Yuqori kesish unumdorligi.', 'Специальная твердосплавная фреза Линдемана для распила костной ткани и сепарации корней (на заказ).', 280000, '280 000 so''m / dona', '280 000 сум / шт', 'in_stock', 'Buyurtmaga', 'На заказ', '["/assets/images/item_417_1.jpg"]'::jsonb),
+  ('395', 'equipment', 'NICEDEN Fiziodispenser Uchligi (20:1)', 'Угловой наконечник для физиодиспенсера NICEDEN (20:1)', 'Implantologiya va jag‘ jarrohligi uchun mo‘ljallangan pasaytiruvchi burchakli наконечник. Tashqi va ichki sovitish tizimi.', 'Понижающий наконечник 20:1 для имплантации и хирургии. Внутреннее и внешнее охлаждение, высокая точность.', 950000, '950 000 so''m (75$)', '950 000 сум (75$)', 'in_stock', 'Original', 'Оригинал', '["/assets/images/item_395_1.jpg","/assets/images/item_395_2.jpg"]'::jsonb),
+  ('421', 'surgery', 'Multi-Unit tizimi komponentlari (To‘g‘ri, 17°, 30°)', 'Компоненты системы Multi-Unit (Прямой, 17°, 30°)', 'Multi unit abutmentlar, transfer, kolpachok, scan marker va ortopedik kalitlar to‘liq assortimenti.', 'Полный спектр абатментов Multi-Unit, трансферы, колпачки, скан-markerы и ортопедические ключи.', 70000, '70 000 so''mdan', 'от 70 000 сум', 'in_stock', 'Multi-Unit', 'Multi-Unit', '["/assets/images/item_421_1.jpg"]'::jsonb),
+  ('399', 'surgery', 'Multi-Unit uchun Transferlar', 'Трансферы для Multi-Unit', 'Multi-Unit tizimida aniq o‘lcham (otpechatka) olish uchun ochiq va yopiq usuldagi sifatli transferlar.', 'Трансферы для снятия высокоточных слепков в системе Multi-Unit открытым и закрытым методом.', 65000, '65 000 so''m', '65 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_399_1.jpg","/assets/images/item_399_2.jpg"]'::jsonb),
+  ('416', 'surgery', 'Osstem Yo‘naltiruvchi Frezasi (Buyurtmaga)', 'Направляющая фреза Osstem (На заказ)', 'Osstem implantatsiya tizimi uchun yo‘naltiruvchi aniq jarrohlik frezasi.', 'Оригинальная направляющая хирургическая фреза для системы Osstem (поставляется под заказ).', 0, 'Kelishilgan narxda', 'По согласованию', 'on_order', 'Buyurtmaga', 'На заказ', '["/assets/images/item_416_1.jpg"]'::jsonb),
+  ('418', 'therapy', 'Restavratsiya uchun silikon cho‘tkalar to‘plami (5 dona)', 'Набор силиконовых кисточек для реставрации (5 шт)', 'Kompozit restavratsiyasida tish anatomiyasini va fissuralarni modellashtirish uchun har xil shakldagi 5 ta silikon cho‘tka.', 'Набор из 5 силиконовых кистей с различными формами наконечников для высокохудожественного моделирования композитов.', 120000, '120 000 so''m', '120 000 сум', 'in_stock', 'Top to''plam', 'Топ набор', '["/assets/images/item_418_1.jpg","/assets/images/item_418_2.jpg"]'::jsonb),
+  ('409', 'therapy', 'Kompozit va emal uchun Polirovochniy to‘plam (Premium)', 'Полировочный набор для композитов (Премиум)', 'Plombani oxirgi bosqichda oynadek porlash holatiga keltirish uchun professional polirovkalar to‘plami.', 'Профессиональный полировочный набор для финишной полировки и придания зеркального блеска композитным пломбам.', 110000, '110 000 so''m', '110 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_409_1.jpg","/assets/images/item_409_2.jpg"]'::jsonb),
+  ('411', 'therapy', 'Stomatologik Polirovochniy to‘plam', 'Полировочный набор стоматологический', 'Har xil qattiqlikdagi polirovka kallaklari to‘plami. Kompozit va keramika yuzalariga ideal ishlov beradi.', 'Набор полировочных головок различной абразивности для качественной обработки композитов.', 65000, '65 000 so''m', '65 000 сум', 'in_stock', 'Hamyonbop', 'Выгодно', '["/assets/images/item_411_1.jpg","/assets/images/item_411_2.jpg"]'::jsonb),
+  ('403', 'therapy', 'Frontal tishlar uchun kontur matritsalar to‘plami', 'Матрицы для фронтальных зубов', 'Oldingi (frontal) tishlarni restavratsiya qilishda tabiiy anatomiya va kontakt nuqtasini hosil qilish uchun shaffof matritsalar.', 'Контурные матрицы для анатомической реставрации фронтальной группы зубов с созданием правильного контактного пункта.', 110000, '110 000 so''m', '110 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_403_1.jpg"]'::jsonb),
+  ('405', 'therapy', 'Qulflanuvchi (Zamkoviy) matritsalar to‘plami', 'Замковые матрицы', 'Qulay fiksatsiya qulfiga ega po‘lat matritsalar to‘plami. Yon tishlar oraliqlarini ishonchli tiklash imkonini beradi.', 'Набор замковых металлических матриц с надежной системой фиксации без дополнительных зажимов.', 115000, '115 000 so''m', '115 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_405_1.jpg"]'::jsonb),
+  ('404', 'therapy', 'Sektsion kontur matritsalar', 'Секционные контурные матрицы', 'II toifadagi bo‘shliqlarni plombalash uchun anatomik shaklga ega yupqa po‘lat sektsion matritsalar.', 'Анатомические тонкие металлические секционные матрицы для идеального восстановления полостей II класса.', 85000, '85 000 so''m', '85 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_404_1.jpg"]'::jsonb),
+  ('385', 'therapy', 'NiTi Matritsa ushlagichlari (01, 02, 03 o‘lchamlar)', 'Матрицедержатели NiTi (размеры 01, 02, 03)', 'Nikel-titan qotishmasidan tayyorlangan mustahkam, shaklini yo‘qotmaydigan matritsa qisqichlari (xalqalari).', 'Сверхпрочные никель-титановые разделительные кольца (матрицедержатели), сохраняющие упругость при многократной автоклавации.', 190000, '190 000 so''m (15$)', '190 000 сум (15$)', 'in_stock', 'NiTi', 'NiTi', '["/assets/images/item_385_1.jpg","/assets/images/item_385_2.jpg","/assets/images/item_385_3.jpg"]'::jsonb),
+  ('397', 'therapy', 'Matritsa ushlagich (A va B turlari)', 'Матрицедержатель двух видов (A, B)', 'Matritsa lentasini mahkamlash va bo‘shliq atrofida mahkam ushlab turish uchun standart matritsauslagich.', 'Универсальный инструмент для надёжной фиксации и натяжения матричной ленты в полости рта.', 60000, '60 000 so''m', '60 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_397_1.jpg","/assets/images/item_397_2.jpg"]'::jsonb),
+  ('413', 'therapy', 'Stomatologik tishli pinset', 'Зубчатый стоматологический пинцет', 'Yupqa tishchalari va nozik uchi bilan mayda narsalarni, vata valiklarini qulay va mustahkam ushlovchi pinset.', 'Анатомический пинцет с зубчиками на кончиках для надёжного и деликатного удержания материалов.', 95000, '95 000 so''m', '95 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_413_1.jpg","/assets/images/item_413_2.jpg"]'::jsonb),
+  ('393', 'surgery', 'Jarrohlik skalpel ushlagichi (Scalpel holder)', 'Скальпель держатель хирургический', 'Bir martalik almashtiriladigan skalpel tig‘lari uchun qulay o‘lchovli mustahkam metall ushlagich.', 'Эргономичная цельнометаллическая ручка-держатель для стандартных сменных хирургических лезвий.', 100000, '100 000 so''m', '100 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_393_1.jpg","/assets/images/item_393_2.jpg"]'::jsonb),
+  ('372', 'surgery', 'Karpul Shpritsi (Aspiratsion)', 'Карпульный шприц стоматологический', 'Karpul anesteziyasi uchun aspiratsion qayta ishlanadigan yuqori sifatli stomatologik shprits.', 'Аспирационный карпульный шприц из нержавеющей стали для точной и безболезненной местной анестезии.', 100000, '100 000 so''m', '100 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_372_1.jpg"]'::jsonb),
+  ('389', 'therapy', 'Metall Endo Lineyka (Kanal o‘lchagich)', 'Эндодонтическая металлическая линейка', 'Ildiz kanallarining ishchi uzunligini va fayllarni aniq o‘lchash uchun avtoklavlanadigan metall lineyka.', 'Прецизионная металлическая линейка для измерения рабочей длины корневых каналов и эндодонтических инструментов.', 25000, '25 000 so''m', '25 000 сум', 'in_stock', 'Hamyonbop', 'Эконом', '["/assets/images/item_389_1.jpg","/assets/images/item_389_2.jpg"]'::jsonb),
+  ('406', 'consumables', 'Artikulyatsion qog‘oz (Kopirovka, 300 dona)', 'Копировальная бумага артикуляционная (300 шт)', 'Okklyuziya va tishlarning tishlash kontaktlarini aniq tekshirish uchun ikki tomonlama artikulyatsion qog‘oz.', 'Двусторонняя артикуляционная бумага для контроля окклюзионных контактов и прикуса (упаковка 300 шт).', 105000, '105 000 so''m', '105 000 сум', 'in_stock', '300 dona', '300 шт', '["/assets/images/item_406_1.jpg"]'::jsonb),
+  ('407', 'consumables', 'Endodontik yuvish ignasi (100 dona o‘ram)', 'Эндодонтические иглы для ирригации (100 шт)', 'Ildiz kanallarini xavfsiz yuvish uchun yon tomondan teshikli maxsus endodontik ignalar to‘plami.', 'Эндодонтические иглы с боковым срезом для безопасной и эффективной ирригации каналов. В упаковке 100 шт.', 170000, '170 000 so''m / o‘ram', '170 000 сум / уп', 'in_stock', '100 dona', '100 шт', '["/assets/images/item_407_1.jpg","/assets/images/item_407_2.jpg"]'::jsonb),
+  ('428', 'consumables', 'Bir martalik jarrohlik xalati', 'Хирургический халат одноразовый', 'Steril jarrohlik va stomatologik amaliyotlar uchun zich, nafas oluvchi spunbond matodan tayyorlangan xalat.', 'Одноразовый защитный хирургический халат из гипоаллергенного спанбонда для чистых процедур.', 30000, '30 000 so''m', '30 000 сум', 'in_stock', NULL, NULL, '["/assets/images/item_428_1.jpg"]'::jsonb),
+  ('374', 'consumables', 'Bir martalik tibbiy qalpoqcha (Sharlotka, 100 dona)', 'Медицинские шапочки-шарлотка (100 шт)', 'Klinika va operatsiya xonalari uchun yumshoq, qisuvchi rezinaga ega bir martalik sharlotka qalpoqchalari.', 'Одноразовые защитные береты (шарлотки) из нетканого материала на мягкой резинке. Упаковка 100 шт.', 80000, '80 000 so''m', '80 000 сум', 'in_stock', '100 dona', '100 шт', '["/assets/images/item_374_1.jpg","/assets/images/item_374_2.jpg"]'::jsonb),
+  ('381', 'surgery', 'Dentium Surgical Kit (Jarrohlik to‘plami)', 'Хирургический набор Dentium Surgical Kit', 'Dentium implantatsiya tizimi uchun original jarrohlik to‘plami (buyurtmaga).', 'Оригинальный полный хирургический набор для работы с системой дентальных имплантов Dentium (под заказ).', 0, 'Kelishilgan narxda', 'По согласованию', 'on_order', 'Buyurtmaga', 'На заказ', '["/assets/images/item_381_1.jpg","/assets/images/item_381_2.jpg"]'::jsonb)
+ON CONFLICT (id) DO UPDATE SET
+  category = EXCLUDED.category,
+  name_uz = EXCLUDED.name_uz,
+  name_ru = EXCLUDED.name_ru,
+  desc_uz = EXCLUDED.desc_uz,
+  desc_ru = EXCLUDED.desc_ru,
+  price = EXCLUDED.price,
+  price_display_uz = EXCLUDED.price_display_uz,
+  price_display_ru = EXCLUDED.price_display_ru,
+  status = EXCLUDED.status,
+  badge_uz = EXCLUDED.badge_uz,
+  badge_ru = EXCLUDED.badge_ru,
+  images = EXCLUDED.images;
