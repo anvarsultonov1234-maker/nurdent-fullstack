@@ -320,13 +320,13 @@ export default function HomePage() {
 
       {/* 2. APPLE GLOBAL NAVIGATION BAR */}
       <header className="sticky top-0 z-40 apple-nav">
-        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 h-[48px] sm:h-[52px] flex items-center justify-between gap-4">
-          {/* Brand Logo (Logo only, larger, no text) */}
-          <Link href="/" className="flex items-center group" title="NurDent">
+        <div className="max-w-[1024px] mx-auto px-4 sm:px-6 h-[54px] sm:h-[60px] flex items-center justify-between gap-4">
+          {/* Brand Logo (Logo only, prominent, fills height) */}
+          <Link href="/" className="flex items-center group py-0.5" title="NurDent">
             <img
               src="/assets/images/nurdent_logo.jpg"
               alt="NurDent"
-              className="w-[36px] h-[36px] sm:w-[44px] sm:h-[44px] rounded-full object-cover border border-black/[0.08] shadow-sm group-hover:scale-105 transition-transform"
+              className="w-[48px] h-[48px] sm:w-[54px] sm:h-[54px] rounded-full object-cover border border-black/[0.08] shadow-sm group-hover:scale-105 transition-transform"
             />
           </Link>
 
