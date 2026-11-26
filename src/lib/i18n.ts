@@ -65,8 +65,8 @@ export const I18N = {
     // Highlights
     spec_1_val: "100%",
     spec_1_lbl: "Tibbiy zanglamas po‘lat va avtoklavga chidamlilik",
-    spec_2_val: "14",
-    spec_2_lbl: "14 viloyat bo‘ylab tezkor va xavfsiz yetkazib berish",
+    spec_2_val: "12",
+    spec_2_lbl: "12 viloyat bo‘ylab tezkor va xavfsiz yetkazib berish",
     spec_3_val: "24/7",
     spec_3_lbl: "Professional mutaxassis konsultatsiyasi",
     
@@ -145,8 +145,8 @@ export const I18N = {
     // Highlights
     spec_1_val: "100%",
     spec_1_lbl: "Медицинская нержавеющая сталь и автоклавируемость",
-    spec_2_val: "14",
-    spec_2_lbl: "Быстрая доставка по всем 14 регионам Узбекистана",
+    spec_2_val: "12",
+    spec_2_lbl: "Быстрая доставка по всем 12 регионам Узбекистана",
     spec_3_val: "24/7",
     spec_3_lbl: "Профессиональная консультация специалистов",
     

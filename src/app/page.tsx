@@ -321,16 +321,13 @@ export default function HomePage() {
       {/* 2. APPLE GLOBAL NAVIGATION BAR */}
       <header className="sticky top-0 z-40 apple-nav">
         <div className="max-w-[1024px] mx-auto px-4 sm:px-6 h-[48px] sm:h-[52px] flex items-center justify-between gap-4">
-          {/* Brand Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group">
+          {/* Brand Logo (Logo only, larger, no text) */}
+          <Link href="/" className="flex items-center group" title="NurDent">
             <img
               src="/assets/images/nurdent_logo.jpg"
               alt="NurDent"
-              className="w-[28px] h-[28px] sm:w-[32px] sm:h-[32px] rounded-full object-cover border border-black/[0.08] shadow-sm group-hover:scale-105 transition-transform"
+              className="w-[36px] h-[36px] sm:w-[44px] sm:h-[44px] rounded-full object-cover border border-black/[0.08] shadow-sm group-hover:scale-105 transition-transform"
             />
-            <span className="text-[17px] font-semibold tracking-tight text-[#1d1d1f]">
-              NurDent
-            </span>
           </Link>
 
           {/* Center Minimalist Links */}
@@ -739,15 +736,8 @@ export default function HomePage() {
           <div>
             <span>{t.footer_note}</span>
           </div>
-          <div className="flex items-center gap-4">
-            <span className="font-medium text-[#1d1d1f]">Tel: +998 50 570 71 70</span>
-            <span className="text-[#86868b]/40">|</span>
-            <Link
-              href="/admin"
-              className="text-[#0071e3] hover:underline font-medium transition"
-            >
-              {t.footer_admin}
-            </Link>
+          <div className="font-medium text-[#1d1d1f]">
+            Tel: +998 50 570 71 70
           </div>
         </div>
       </footer>

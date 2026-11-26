@@ -504,15 +504,15 @@ export default function AdminPage() {
               <label className="block text-[12px] font-medium text-[#1d1d1f] mb-1.5">
                 Email manzil
               </label>
-              <div className="relative">
-                <Mail className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868b]" />
+              <div className="flex items-center gap-2.5 bg-white border border-black/[0.12] focus-within:border-[#0071e3] focus-within:ring-2 focus-within:ring-[#0071e3]/20 rounded-xl px-3.5 py-2.5 transition shadow-sm">
+                <Mail className="w-4 h-4 text-[#86868b] shrink-0" />
                 <input
                   type="email"
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@nurdent.uz"
-                  className="apple-input pl-10 text-[13px]"
+                  placeholder="Email kiriting"
+                  className="w-full bg-transparent text-[13px] text-[#1d1d1f] outline-none"
                 />
               </div>
             </div>
@@ -521,15 +521,15 @@ export default function AdminPage() {
               <label className="block text-[12px] font-medium text-[#1d1d1f] mb-1.5">
                 Maxfiy parol
               </label>
-              <div className="relative">
-                <Key className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#86868b]" />
+              <div className="flex items-center gap-2.5 bg-white border border-black/[0.12] focus-within:border-[#0071e3] focus-within:ring-2 focus-within:ring-[#0071e3]/20 rounded-xl px-3.5 py-2.5 transition shadow-sm">
+                <Key className="w-4 h-4 text-[#86868b] shrink-0" />
                 <input
                   type="password"
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••"
-                  className="apple-input pl-10 text-[13px]"
+                  placeholder="Parolni kiriting"
+                  className="w-full bg-transparent text-[13px] text-[#1d1d1f] outline-none"
                 />
               </div>
             </div>
